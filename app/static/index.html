@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PulseWatch</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 860px; margin: 2rem auto; padding: 0 1rem; background:#0f172a; color:#e2e8f0; }
+  h1 { margin-bottom: .2rem } .sub { color:#94a3b8; margin-bottom:1.5rem }
+  table { width:100%; border-collapse: collapse }
+  th, td { text-align:left; padding:.6rem .5rem; border-bottom:1px solid #1e293b }
+  .dot { display:inline-block; width:.7rem; height:.7rem; border-radius:50%; margin-right:.4rem; background:#64748b }
+  .up { background:#22c55e } .down { background:#ef4444 }
+  .muted { color:#94a3b8; font-size:.85rem }
+</style>
+</head>
+<body>
+<h1>PulseWatch</h1>
+<div class="sub">Uptime monitor · refreshes every 5s · <span id="served"></span></div>
+<table>
+  <thead><tr><th>Status</th><th>Name</th><th>URL</th><th>Latency</th><th>Last check</th></tr></thead>
+  <tbody id="rows"></tbody>
+</table>
+<script>
+function cell(text, cls) { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; return td; }
+async function refresh() {
+  try {
+    const res = await fetch('/api/monitors');
+    document.getElementById('served').textContent = 'served by ' + (res.headers.get('X-Served-By') || '?');
+    const data = await res.json();
+    const tbody = document.getElementById('rows');
+    tbody.replaceChildren();
+    for (const m of data) {
+      const tr = document.createElement('tr');
+      const s = m.status;
+      const st = document.createElement('td');
+      const dot = document.createElement('span');
+      dot.className = 'dot ' + (s ? (s.up ? 'up' : 'down') : '');
+      st.append(dot, s ? (s.up ? 'UP' : 'DOWN') : 'pending');
+      tr.append(st, cell(m.name), cell(m.url, 'muted'),
+        cell(s && s.latency_ms != null ? s.latency_ms + ' ms' : '-'),
+        cell(s ? new Date(s.checked_at).toLocaleTimeString() : '-', 'muted'));
+      tbody.append(tr);   // textContent is used to avoid XSS
+    }
+  } catch (e) { console.error(e); }
+}
+refresh(); setInterval(refresh, 5000);
+</script>
+</body>
+</html>
